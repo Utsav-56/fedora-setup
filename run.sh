@@ -53,8 +53,7 @@ $SUDO_CMD mkdir -p "$DL_DIR"
 
 if cmd-exists aria2c; then
     info "Downloading via aria2c (8 threads)..."
-    
-    $SUDO_CMD aria2c -x 8 -k 2M -d "$DL_DIR" -o "usetup" "$GITHUB_URL"
+    $SUDO_CMD aria2c --console-log-level=warn -x 8 -k 2M -d "$DL_DIR" -o "usetup" "$GITHUB_URL"
 elif cmd-exists curl; then
     warning "Falling back to curl..."
     $SUDO_CMD curl -L --progress-bar -o "$BIN_PATH" "$GITHUB_URL"
