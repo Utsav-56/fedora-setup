@@ -5,4 +5,4 @@ read -p "Enter commit message: " commit_msg
 # now commit the changes
 git add .
 git commit -m "$commit_msg"
-git push
+git push origin main

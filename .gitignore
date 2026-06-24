@@ -1,0 +1,5 @@
+*.tar*
+*.zip
+*.zst
+*.tar.zst
+*.tar.xz
