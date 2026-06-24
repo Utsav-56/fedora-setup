@@ -607,7 +607,6 @@ GOLANG_DOWNLOAD_LINK="https://dl.google.com/go/go1.22.4.linux-amd64.tar.gz"
 DART_DOWNLOAD_LINK="https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.44.2-stable.tar.xz"
 JETBRAINS_DATA_GRIP_DOWNLOAD_LINK="https://download-cdn.jetbrains.com/datagrip/datagrip-2026.1.3.tar.gz"
 
-
 CHROME_DOWNLOAD_LINK="https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
 ANTIGRAVITY_DOWNLOAD_LINK="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.0.4-6381998290370560/linux-x64/Antigravity%20IDE.tar.gz"
 VS_CODE_DOWNLOAD_LINK="https://vscode.download.prss.microsoft.com/dbazure/download/stable/93cfdd489c3b228840d0f86ec77c3636277c93ea/code-1.125.0-1781601611.el8.x86_64.rpm"
