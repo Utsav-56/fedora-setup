@@ -3,7 +3,6 @@ package lang
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"setup/config"
 	"setup/logger"
 	"setup/sysutils"
@@ -18,7 +17,7 @@ func InstallNode() error {
 
 	logger.Info("Installing Node.js via FNM...")
 
-	fnmDir := filepath.Join(config.PublicSourceDir, "fnm")
+	fnmDir := config.FnmDir
 	if err := os.MkdirAll(fnmDir, 0755); err != nil {
 		return err
 	}
@@ -34,8 +33,8 @@ func InstallNode() error {
 		return fmt.Errorf("failed to run fnm installer: %w", err)
 	}
 
-	// Symlink FNM binary
-	if err := sysutils.LinkFiles(fnmDir, config.SrcBinDir); err != nil {
+	// Symlink FNM binary using SrcAdd
+	if err := sysutils.SrcAdd(fnmDir); err != nil {
 		return err
 	}
 
@@ -43,6 +42,11 @@ func InstallNode() error {
 	shellCmd := fmt.Sprintf(`export PATH="%s:$PATH" && eval "$(fnm env --use-on-cd)" && fnm install --latest && fnm use latest && fnm default latest && corepack enable && corepack prepare pnpm@latest --activate`, fnmDir)
 	if err := sysutils.RunCommand("bash", "-c", shellCmd); err != nil {
 		return fmt.Errorf("failed to configure node via fnm: %w", err)
+	}
+
+	// Load FNM env in the current session so that subsequent tool installs can resolve node/pnpm
+	if err := sysutils.LoadFnmEnv(); err != nil {
+		logger.Warning("Failed to load FNM environment into current run: %v", err)
 	}
 
 	return nil

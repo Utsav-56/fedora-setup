@@ -14,6 +14,24 @@ var (
 	PoshDir          = filepath.Join(PublicSourceDir, "oh-my-posh")
 	PoshThemeDir     = filepath.Join(PoshDir, "themes")
 	DefaultUserGroup = "shared"
+
+	// --- 2. DEVELOPMENT SDK HOME DIRECTORIES ---
+	AndroidHome = filepath.Join(PublicSourceDir, "android-sdk")
+	DenoInstall = filepath.Join(PublicSourceDir, "deno")
+	FnmDir      = filepath.Join(PublicSourceDir, "nodejs")
+	PnpmHome    = filepath.Join(PublicSourceDir, "pnpm")
+	JavaHome    = "/opt/android-studio/jbr"
+
+	// --- 3. GLOBAL CACHE SETTINGS ---
+	GoCache       = "/cache/go/build"
+	GoModCache    = "/cache/go/mod"
+	PubCache      = "/cache/pub"
+	PnpmStorePath = "/cache/pnpm/store"
+	UvCacheDir    = "/cache/uv"
+
+	// --- 4. RUST & PYTHON (uv) ---
+	UvPythonInstallDir = filepath.Join(PublicSourceDir, "python", "versions")
+	UvToolDir          = filepath.Join(PublicSourceDir, "python", "tools")
 )
 
 type ToolConfig struct {
@@ -21,7 +39,7 @@ type ToolConfig struct {
 	Name        string   // display name e.g. "Go", "Dart & Flutter"
 	DownloadURL string   // URL to download from
 	FileName    string   // local filename in /tmp/usetup
-	InstallDir  string   // directory to extract to
+	InstallDir  string   // parent directory to extract to
 	Version     string   // version of the tool
 	Type        string   // "tar", "rpm", "dnf", "custom"
 	BinPaths    []string // path(s) relative to InstallDir to symlink into SrcBinDir or AppBinDir
@@ -37,7 +55,7 @@ var Tools = map[string]*ToolConfig{
 		InstallDir:  filepath.Join(PublicSourceDir, "golang"),
 		Version:     "1.22.4",
 		Type:        "tar",
-		BinPaths:    []string{"go/bin/go", "go/bin/gofmt"},
+		BinPaths:    []string{"go1.22.4/bin/go", "go1.22.4/bin/gofmt"},
 	},
 	"dart": {
 		ID:          "dart",
@@ -47,7 +65,7 @@ var Tools = map[string]*ToolConfig{
 		InstallDir:  filepath.Join(PublicSourceDir, "flutter"),
 		Version:     "3.44.2",
 		Type:        "tar",
-		BinPaths:    []string{"bin/flutter", "bin/dart"},
+		BinPaths:    []string{"flutter_3.44.2/bin/flutter", "flutter_3.44.2/bin/dart"},
 	},
 	"antigravity": {
 		ID:          "antigravity",

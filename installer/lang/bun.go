@@ -32,5 +32,5 @@ func InstallBun() error {
 	}
 
 	bunBinDir := filepath.Join(bunInstall, "bin")
-	return sysutils.LinkFiles(bunBinDir, config.SrcBinDir)
+	return sysutils.SrcAdd(bunBinDir)
 }

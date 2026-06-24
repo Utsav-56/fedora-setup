@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
+	_ "embed"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"text/template"
 	"time"
 
 	"charm.land/huh/v2"
@@ -18,6 +21,15 @@ import (
 	"setup/logger"
 	"setup/sysutils"
 )
+
+//go:embed shell-scripts/path_login.sh
+var loginScriptTmpl string
+
+//go:embed shell-scripts/env_login.sh
+var envScriptTmpl string
+
+//go:embed oh-my-posh/themes/shell.omp.toml
+var poshThemeContent string
 
 var (
 	selectedLangs    []string
@@ -75,7 +87,93 @@ func init() {
 	})
 }
 
+// RenderLoginScript renders the login script.
+func RenderLoginScript() (string, error) {
+	return loginScriptTmpl, nil
+}
+
+// RenderEnvScript renders the env_login script template with configuration paths.
+func RenderEnvScript() (string, error) {
+	tmpl, err := template.New("env").Parse(envScriptTmpl)
+	if err != nil {
+		return "", err
+	}
+
+	data := struct {
+		AndroidHome        string
+		FlutterPath        string
+		GoPath             string
+		BunInstall         string
+		DenoInstall        string
+		FnmDir             string
+		PnpmHome           string
+		JavaHome           string
+		GoCache            string
+		GoModCache         string
+		PubCache           string
+		PnpmStorePath      string
+		UvCacheDir         string
+		RustupHome         string
+		CargoHome          string
+		UvPythonInstallDir string
+		UvToolDir          string
+	}{
+		AndroidHome:        config.AndroidHome,
+		FlutterPath:        filepath.Join(config.PublicSourceDir, "flutter", "flutter_"+config.Tools["dart"].Version),
+		GoPath:             filepath.Join(config.PublicSourceDir, "golang", "go"+config.Tools["go"].Version),
+		BunInstall:         filepath.Join(config.PublicSourceDir, "bun"),
+		DenoInstall:        config.DenoInstall,
+		FnmDir:             config.FnmDir,
+		PnpmHome:           config.PnpmHome,
+		JavaHome:           config.JavaHome,
+		GoCache:            config.GoCache,
+		GoModCache:         config.GoModCache,
+		PubCache:           config.PubCache,
+		PnpmStorePath:      config.PnpmStorePath,
+		UvCacheDir:         config.UvCacheDir,
+		RustupHome:         filepath.Join(config.PublicSourceDir, "rust", "rustup"),
+		CargoHome:          filepath.Join(config.PublicSourceDir, "rust", "cargo"),
+		UvPythonInstallDir: config.UvPythonInstallDir,
+		UvToolDir:          config.UvToolDir,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+
 func main() {
+	// Set SDK and global cache environment variables for the current run to support installer tools
+	os.Setenv("ANDROID_HOME", config.AndroidHome)
+	os.Setenv("ANDROID_SDK_ROOT", config.AndroidHome)
+	os.Setenv("FLUTTER_PATH", filepath.Join(config.PublicSourceDir, "flutter", "flutter_"+config.Tools["dart"].Version))
+	os.Setenv("FLUTTER_ROOT", filepath.Join(config.PublicSourceDir, "flutter", "flutter_"+config.Tools["dart"].Version))
+	os.Setenv("GO_PATH", filepath.Join(config.PublicSourceDir, "golang", "go"+config.Tools["go"].Version))
+	os.Setenv("GOROOT", filepath.Join(config.PublicSourceDir, "golang", "go"+config.Tools["go"].Version))
+	os.Setenv("GOPATH", filepath.Join(config.PublicSourceDir, "go"))
+	os.Setenv("BUN_INSTALL", filepath.Join(config.PublicSourceDir, "bun"))
+	os.Setenv("DENO_INSTALL", config.DenoInstall)
+	os.Setenv("FNM_DIR", config.FnmDir)
+	os.Setenv("PNPM_HOME", config.PnpmHome)
+	os.Setenv("JAVA_HOME", config.JavaHome)
+
+	os.Setenv("GOCACHE", config.GoCache)
+	os.Setenv("GOMODCACHE", config.GoModCache)
+	os.Setenv("PUB_CACHE", config.PubCache)
+	os.Setenv("PNPM_STORE_PATH", config.PnpmStorePath)
+	os.Setenv("UV_CACHE_DIR", config.UvCacheDir)
+
+	os.Setenv("RUSTUP_HOME", filepath.Join(config.PublicSourceDir, "rust", "rustup"))
+	os.Setenv("CARGO_HOME", filepath.Join(config.PublicSourceDir, "rust", "cargo"))
+	os.Setenv("UV_PYTHON_INSTALL_DIR", config.UvPythonInstallDir)
+	os.Setenv("UV_TOOL_DIR", config.UvToolDir)
+
+	// Prepend bin dirs to current process PATH so that newly spawned processes can resolve installed tools
+	os.Setenv("PATH", config.SrcBinDir+":"+config.AppBinDir+":"+os.Getenv("PATH"))
+
 	// Ensure we shut down the aria2c daemon at exit
 	defer func() {
 		logger.Info("Cleaning up Aria2 RPC daemon...")
@@ -187,7 +285,7 @@ func main() {
 		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
 	}
 
-	// 4. Execute Parallel Downloads
+	// Execute Parallel Downloads
 	if len(downloadRequests) > 0 {
 		logger.Info("Downloading %d selected package archives...", len(downloadRequests))
 		res, err := dl.DownloadBatch(
@@ -208,19 +306,31 @@ func main() {
 		}
 	}
 
-	// 5. Install Shell Configurations and Environment profiles
-	// Find script dir
-	exePath, _ := os.Executable()
-	scriptDir := filepath.Dir(exePath)
-	// If run under go run, it might be temp directory. Fallback to /home/hwakins/setup/shell-scripts
-	if !sysutils.CommandExists(filepath.Join(scriptDir, "path_login.sh")) {
-		scriptDir = "/home/hwakins/setup/shell-scripts"
+	// 5. Render and Install Shell Configurations
+	compiledEnv, err := RenderEnvScript()
+	if err != nil {
+		logger.Warning("failed to compile env login script template: %v", err)
+	} else {
+		if err := sysutils.InstallEnvConfig(compiledEnv, config.PublicSourceDir); err != nil {
+			logger.Warning("failed to install env login environment script: %v", err)
+		}
 	}
-	if err := sysutils.InstallShellConfig(scriptDir, config.PublicSourceDir); err != nil {
-		logger.Warning("failed to install login environment script: %v", err)
+
+	compiledScript, err := RenderLoginScript()
+	if err != nil {
+		logger.Warning("failed to compile login script template: %v", err)
+	} else {
+		if err := sysutils.InstallShellConfig(compiledScript, config.PublicSourceDir); err != nil {
+			logger.Warning("failed to install login environment script: %v", err)
+		}
 	}
 
 	// 6. Setup ZSH shell features if requested
+	exePath, _ := os.Executable()
+	scriptDir := filepath.Dir(exePath)
+	if !sysutils.CommandExists(filepath.Join(scriptDir, "zsh-init.sh")) {
+		scriptDir = "/home/hwakins/setup/shell-scripts"
+	}
 	if slices.Contains(config.CorePackages, "zsh") {
 		logger.Info("Initializing Zsh setup...")
 		if err := sysutils.RunCommand("bash", filepath.Join(scriptDir, "zsh-init.sh")); err != nil {
@@ -228,7 +338,7 @@ func main() {
 		}
 	}
 
-	// 7. Bootstrap Oh My Posh
+	// 7. Bootstrap Oh My Posh Theme
 	ensureOhMyPosh()
 
 	// 8. Bootstrap Witr tool
@@ -339,16 +449,11 @@ func ensureOhMyPosh() {
 }
 
 func ensurePoshThemes() {
-	bashThemeURL := "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/refs/heads/main/themes/clean-detailed.omp.json"
-	zshThemeURL := "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/refs/heads/main/themes/atomic.omp.json"
-
-	bashThemePath := filepath.Join(config.PoshThemeDir, "bash.omp.json")
-	zshThemePath := filepath.Join(config.PoshThemeDir, "zsh.omp.json")
-
-	if _, err := os.Stat(bashThemePath); os.IsNotExist(err) {
-		_ = sysutils.RunCommand("curl", "-sL", "-o", bashThemePath, bashThemeURL)
-	}
-	if _, err := os.Stat(zshThemePath); os.IsNotExist(err) {
-		_ = sysutils.RunCommand("curl", "-sL", "-o", zshThemePath, zshThemeURL)
+	themePath := filepath.Join(config.PoshThemeDir, "shell.omp.toml")
+	_ = os.MkdirAll(config.PoshThemeDir, 0755)
+	if err := os.WriteFile(themePath, []byte(poshThemeContent), 0644); err != nil {
+		logger.Warning("failed to write embedded Oh My Posh theme: %v", err)
+	} else {
+		logger.Success("Deployed embedded Oh My Posh theme to %s", themePath)
 	}
 }

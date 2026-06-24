@@ -35,5 +35,5 @@ func InstallRust() error {
 	}
 
 	cargoBinDir := filepath.Join(cargoHome, "bin")
-	return sysutils.LinkFiles(cargoBinDir, config.SrcBinDir)
+	return sysutils.SrcAdd(cargoBinDir)
 }

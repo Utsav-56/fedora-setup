@@ -32,7 +32,7 @@ func InstallAntigravity(cfg *config.ToolConfig) error {
 	}
 
 	// Link executable
-	if err := sysutils.LinkFiles(execFile, config.AppBinDir); err != nil {
+	if err := sysutils.AppAdd(execFile); err != nil {
 		return err
 	}
 

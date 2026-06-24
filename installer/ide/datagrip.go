@@ -26,7 +26,7 @@ func InstallDataGrip(cfg *config.ToolConfig) error {
 	iconFile := filepath.Join(cfg.InstallDir, "bin/datagrip.png")
 
 	// Link binary
-	if err := sysutils.LinkFiles(execFile, config.AppBinDir); err != nil {
+	if err := sysutils.AppAdd(execFile); err != nil {
 		return err
 	}
 

@@ -1,6 +1,10 @@
 #!/bin/bash
 # /src/login.sh -> Linked to /etc/profile.d/src-workspace-env.sh
 
+if [ -f "/src/env_login.sh" ]; then
+    source "/src/env_login.sh"
+fi
+
 PUBLIC_SOURCE_DIR="/src"
 TOOLS_DIR="$PUBLIC_SOURCE_DIR/Tools"
 SRC_BIN_DIR="$TOOLS_DIR/bin"
@@ -9,18 +13,26 @@ APP_BIN_DIR="$APPLICATIONS_DIR/bin"
 APP_XDG_DIR="$APPLICATIONS_DIR/applications"
 DEFAULT_USER_GROUPS="shared"
 
-# 1. Unified Binary Shell Prepend Path Maps (POSIX-safe checks)
-case ":$PATH:" in
-    *:"$SRC_BIN_DIR":*) ;;
-    *) export PATH="$SRC_BIN_DIR:$PATH" ;;
-esac
+# --- 5. Prepend PATH Maps (POSIX-safe checks) ---
+path_prepend() {
+    local p="$1"
+    if [ -d "$p" ]; then
+        case ":$PATH:" in
+            *:"$p":*) ;;
+            *) export PATH="$p:$PATH" ;;
+        esac
+    fi
+}
 
-case ":$PATH:" in
-    *:"$APP_BIN_DIR":*) ;;
-    *) export PATH="$APP_BIN_DIR:$PATH" ;;
-esac
+setup_src_bin() {
+    mkdir -p "$SRC_BIN_DIR"
+    mkdir -p "$APP_BIN_DIR"
+    path_prepend "$SRC_BIN_DIR"
+    path_prepend "$APP_BIN_DIR"
+}
+setup_src_bin
 
-# 2. XDG System Desktop Integration Menu Paths (POSIX-safe checks)
+# --- 6. XDG System Desktop Integration Menu Paths ---
 if [ -z "$XDG_DATA_DIRS" ]; then
     export XDG_DATA_DIRS="$APPLICATIONS_DIR:/usr/local/share:/usr/share"
 else
@@ -30,12 +42,12 @@ else
     esac
 fi
 
-# 3. Prevent permissions drift for shared group developers
+# --- 7. Prevent permissions drift for shared group developers ---
 if id -nG 2>/dev/null | grep -qw "$DEFAULT_USER_GROUPS"; then
     umask 002
 fi
 
-# 4. Interactive Shell Tools (Only loaded in interactive bash/zsh sessions)
+# --- 8. Interactive Shell Tools (Only loaded in interactive bash/zsh sessions) ---
 if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ]; then
 
     # Colorized Logging Utilities
@@ -61,7 +73,6 @@ if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ]; then
         local dest_dir="$2"     # Target folder destination
         shift 2                 # Remaining arguments are file targets
         
-        # Ensure destination directory exists
         if [ ! -d "$dest_dir" ]; then
             mkdir -p "$dest_dir" 2>/dev/null
         fi
@@ -75,8 +86,6 @@ if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ]; then
                 continue
             fi
             
-            # Security Guardrail: Only enforce inside /src for "link" mode
-            # Symlinks must stay within the shared boundary to remain self-contained/portable
             if [ "$mode" = "link" ] && [ "${abs_path#$PUBLIC_SOURCE_DIR/}" = "$abs_path" ]; then
                 _workspace_error "Security boundary violation: Symlink target '$target' is outside $PUBLIC_SOURCE_DIR. Denied."
                 continue
@@ -86,7 +95,6 @@ if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ]; then
                 cp -f "$abs_path" "$dest_dir/"
                 _workspace_success "Copied: $(basename "$abs_path") -> $dest_dir"
             elif [ -d "$abs_path" ]; then
-                # Directory processing: find nested files and link them
                 local files_linked=0
                 for file in "$abs_path"/*; do
                     if [ -f "$file" ]; then
@@ -126,5 +134,19 @@ if [ -n "$BASH_VERSION" ] || [ -n "$ZSH_VERSION" ]; then
             *)          _workspace_linker "copy" "$APP_XDG_DIR" "$@" ;;
         esac
     }
+
+    # Setup FNM if available
+    if command -v fnm >/dev/null 2>&1; then
+        eval "$(fnm env --use-on-cd)"
+    fi
+
+    # Setup Oh My Posh if available
+    if command -v oh-my-posh >/dev/null 2>&1; then
+        if [ -n "$BASH_VERSION" ]; then
+            eval "$(oh-my-posh init bash --config /src/oh-my-posh/themes/shell.omp.toml)"
+        elif [ -n "$ZSH_VERSION" ]; then
+            eval "$(oh-my-posh init zsh --config /src/oh-my-posh/themes/shell.omp.toml)"
+        fi
+    fi
 
 fi

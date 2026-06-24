@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"setup/config"
 	"setup/logger"
 	"strings"
 )
@@ -253,24 +254,15 @@ func CopyFile(src, dst string, perm os.FileMode) error {
 	return err
 }
 
-// InstallShellConfig copies path_login.sh and registers the environment globally.
-func InstallShellConfig(scriptDir, publicSourceDir string) error {
-	srcLogin := filepath.Join(scriptDir, "path_login.sh")
+// InstallShellConfig writes the pre-compiled login.sh script to publicSourceDir and registers the environment globally.
+func InstallShellConfig(compiledScript string, publicSourceDir string) error {
 	destLogin := filepath.Join(publicSourceDir, "login.sh")
 	profileDLink := "/etc/profile.d/src-workspace-env.sh"
 
-	if _, err := os.Stat(srcLogin); err == nil {
-		if err := CopyFile(srcLogin, destLogin, 0755); err != nil {
-			return fmt.Errorf("failed to copy login.sh: %w", err)
-		}
-		logger.Success("Copied login.sh to %s", destLogin)
-	} else {
-		// Fallback: create empty login.sh if sibling file missing
-		logger.Warning("path_login.sh not found in script directory. Creating empty fallback.")
-		if err := os.WriteFile(destLogin, []byte("# empty fallback"), 0755); err != nil {
-			return err
-		}
+	if err := os.WriteFile(destLogin, []byte(compiledScript), 0755); err != nil {
+		return fmt.Errorf("failed to write login.sh: %w", err)
 	}
+	logger.Success("Copied login.sh to %s", destLogin)
 
 	_ = os.Remove(profileDLink)
 	if err := os.Symlink(destLogin, profileDLink); err != nil {
@@ -279,3 +271,68 @@ func InstallShellConfig(scriptDir, publicSourceDir string) error {
 	logger.Success("Linked profile loader to %s", profileDLink)
 	return nil
 }
+
+// InstallEnvConfig writes the pre-compiled env_login.sh script to publicSourceDir.
+func InstallEnvConfig(compiledScript string, publicSourceDir string) error {
+	destEnv := filepath.Join(publicSourceDir, "env_login.sh")
+	if err := os.WriteFile(destEnv, []byte(compiledScript), 0755); err != nil {
+		return fmt.Errorf("failed to write env_login.sh: %w", err)
+	}
+	logger.Success("Copied env_login.sh to %s", destEnv)
+	return nil
+}
+
+// SrcAdd maps a tool directory or binary file into the public source bin directory (/src/Tools/bin).
+func SrcAdd(targetPath string) error {
+	return LinkFiles(targetPath, config.SrcBinDir)
+}
+
+// AppAdd maps an application directory or binary file into the application bin directory (/src/Applications/bin).
+func AppAdd(targetPath string) error {
+	return LinkFiles(targetPath, config.AppBinDir)
+}
+
+// LoadFnmEnv loads environment variables dynamically from FNM command into the current Go execution session.
+func LoadFnmEnv() error {
+	if !CommandExists("fnm") {
+		return nil
+	}
+	cmd := exec.Command("fnm", "env", "--shell=bash")
+	out, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "export ") {
+			continue
+		}
+		parts := strings.SplitN(line[7:], "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := parts[0]
+		val := parts[1]
+		if len(val) >= 2 && val[0] == '"' && val[len(val)-1] == '"' {
+			val = val[1 : len(val)-1]
+		} else if len(val) >= 2 && val[0] == '\'' && val[len(val)-1] == '\'' {
+			val = val[1 : len(val)-1]
+		}
+
+		if key == "PATH" {
+			pathParts := strings.Split(val, ":")
+			for _, p := range pathParts {
+				if p == "$PATH" || p == "" {
+					continue
+				}
+				os.Setenv("PATH", p+":"+os.Getenv("PATH"))
+			}
+		} else {
+			os.Setenv(key, val)
+		}
+	}
+	return nil
+}
+

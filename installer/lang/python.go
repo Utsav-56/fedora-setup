@@ -31,7 +31,7 @@ func InstallPython() error {
 		return fmt.Errorf("failed to run uv installer: %w", err)
 	}
 
-	if err := sysutils.LinkFiles(uvInstallDir, config.SrcBinDir); err != nil {
+	if err := sysutils.SrcAdd(uvInstallDir); err != nil {
 		return err
 	}
 
