@@ -13,13 +13,13 @@ import (
 
 // InstallAntigravity extracts and installs Antigravity IDE.
 func InstallAntigravity(cfg *config.ToolConfig) error {
-	archivePath := filepath.Join("/tmp/usetup", cfg.FileName)
-	isInstalled := installer.IsTarInstalled(archivePath, cfg.InstallDir, "")
-	if isInstalled {
+	if installer.IsToolInstalled(cfg) {
+		logger.Warning("Antigravity IDE is already installed. Skipping...")
 		return nil
 	}
 
 	logger.Info("Installing Antigravity IDE...")
+	archivePath := filepath.Join("/tmp/usetup", cfg.FileName)
 	if err := installer.Extract(archivePath, cfg.InstallDir, ""); err != nil {
 		return err
 	}

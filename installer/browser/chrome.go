@@ -9,13 +9,12 @@ import (
 
 // InstallChrome installs Google Chrome from the downloaded RPM.
 func InstallChrome(cfg *config.ToolConfig) error {
-	rpmPath := filepath.Join("/tmp/usetup", cfg.FileName)
-	isInstalled, err := installer.IsRPMInstalled(rpmPath)
-	if err == nil && isInstalled {
+	if installer.IsToolInstalled(cfg) {
 		logger.Warning("Google Chrome is already installed. Skipping...")
 		return nil
 	}
 
 	logger.Info("Installing Google Chrome...")
+	rpmPath := filepath.Join("/tmp/usetup", cfg.FileName)
 	return installer.InstallRpm(rpmPath)
 }

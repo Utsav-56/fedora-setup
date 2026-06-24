@@ -12,16 +12,14 @@ import (
 
 // InstallVSCode installs VS Code, sets up shared extension path, and installs plugins.
 func InstallVSCode(cfg *config.ToolConfig) error {
-	rpmPath := filepath.Join("/tmp/usetup", cfg.FileName)
-	isInstalled, err := installer.IsRPMInstalled(rpmPath)
-	if err == nil && isInstalled {
-		logger.Warning("VS Code is already installed. Skipping...")
-		return nil
-	}
-
-	logger.Info("Installing VS Code...")
-	if err := installer.InstallRpm(rpmPath); err != nil {
-		return err
+	if !installer.IsToolInstalled(cfg) {
+		rpmPath := filepath.Join("/tmp/usetup", cfg.FileName)
+		logger.Info("Installing VS Code...")
+		if err := installer.InstallRpm(rpmPath); err != nil {
+			return err
+		}
+	} else {
+		logger.Warning("VS Code is already installed. Skipping package installation.")
 	}
 
 	// Prepare user home VS Code path

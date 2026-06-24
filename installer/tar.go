@@ -75,7 +75,11 @@ func sha256OfFile(path string) (string, error) {
 // If targetFolderName is provided, and the archive contains a single root folder,
 // that root folder is renamed/replaced with targetFolderName during extraction.
 func Extract(archivePath, outputPath, targetFolderName string) error {
-	infoFile := filepath.Join(outputPath, "usetup.install-info")
+	actualCheckDir := outputPath
+	if targetFolderName != "" {
+		actualCheckDir = filepath.Join(outputPath, targetFolderName)
+	}
+	infoFile := filepath.Join(actualCheckDir, "usetup.install-info")
 
 	isInstalled := IsTarInstalled(archivePath, outputPath, targetFolderName)
 	if isInstalled {

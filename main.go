@@ -174,6 +174,10 @@ func main() {
 	// Prepend bin dirs to current process PATH so that newly spawned processes can resolve installed tools
 	os.Setenv("PATH", config.SrcBinDir+":"+config.AppBinDir+":"+os.Getenv("PATH"))
 
+	// Load FNM env in the current session so that if Node.js is already installed via FNM,
+	// we can resolve the node/npm/pnpm tools in the current run.
+	_ = sysutils.LoadFnmEnv()
+
 	// Ensure we shut down the aria2c daemon at exit
 	defer func() {
 		logger.Info("Cleaning up Aria2 RPC daemon...")
@@ -254,35 +258,51 @@ func main() {
 
 	if slices.Contains(selectedLangs, "Go") {
 		cfg := config.Tools["go"]
-		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		if !installer.IsToolInstalled(cfg) {
+			downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		}
 	}
 	if slices.Contains(selectedLangs, "Dart") {
 		cfg := config.Tools["dart"]
-		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		if !installer.IsToolInstalled(cfg) {
+			downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		}
 	}
 	if slices.Contains(selectedBrowsers, "Chrome") {
 		cfg := config.Tools["chrome"]
-		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		if !installer.IsToolInstalled(cfg) {
+			downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		}
 	}
 	if slices.Contains(selectedBrowsers, "Bitwarden") {
 		cfg := config.Tools["bitwarden"]
-		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		if !installer.IsToolInstalled(cfg) {
+			downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		}
 	}
 	if slices.Contains(selectedIDEs, "Antigravity") {
 		cfg := config.Tools["antigravity"]
-		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		if !installer.IsToolInstalled(cfg) {
+			downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		}
 	}
 	if slices.Contains(selectedIDEs, "VS Code") {
 		cfg := config.Tools["vscode"]
-		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		if !installer.IsToolInstalled(cfg) {
+			downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		}
 	}
 	if slices.Contains(selectedIDEs, "DataGrip") {
 		cfg := config.Tools["datagrip"]
-		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		if !installer.IsToolInstalled(cfg) {
+			downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		}
 	}
 	if slices.Contains(selectedIDEs, "Zed") {
 		cfg := config.Tools["zed"]
-		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		if !installer.IsToolInstalled(cfg) {
+			downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+		}
 	}
 
 	// Execute Parallel Downloads

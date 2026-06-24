@@ -11,8 +11,8 @@ import (
 
 // InstallPython installs UV python manager and uses it to install Python.
 func InstallPython() error {
-	if sysutils.CommandExists("python") || sysutils.CommandExists("python3") {
-		logger.Warning("Python is already available. Skipping...")
+	if sysutils.CommandExists("uv") {
+		logger.Warning("Python via UV is already available. Skipping...")
 		return nil
 	}
 

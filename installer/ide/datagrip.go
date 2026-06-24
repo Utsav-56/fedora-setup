@@ -11,13 +11,13 @@ import (
 
 // InstallDataGrip extracts and configures JetBrains DataGrip IDE.
 func InstallDataGrip(cfg *config.ToolConfig) error {
-	archivePath := filepath.Join("/tmp/usetup", cfg.FileName)
-	isInstalled := installer.IsTarInstalled(archivePath, cfg.InstallDir, "")
-	if isInstalled {
+	if installer.IsToolInstalled(cfg) {
+		logger.Warning("JetBrains DataGrip is already installed. Skipping...")
 		return nil
 	}
 
 	logger.Info("Installing JetBrains DataGrip...")
+	archivePath := filepath.Join("/tmp/usetup", cfg.FileName)
 	if err := installer.Extract(archivePath, cfg.InstallDir, ""); err != nil {
 		return err
 	}

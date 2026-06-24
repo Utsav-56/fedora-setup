@@ -10,14 +10,14 @@ import (
 
 // InstallGo extracts the Go archive into a versioned subdirectory and links target binaries.
 func InstallGo(cfg *config.ToolConfig) error {
-	archivePath := filepath.Join("/tmp/usetup", cfg.FileName)
-	targetFolder := "go" + cfg.Version
-	isInstalled := installer.IsTarInstalled(archivePath, cfg.InstallDir, targetFolder)
-	if isInstalled {
+	if installer.IsToolInstalled(cfg) {
+		logger.Warning("Go is already installed. Skipping...")
 		return nil
 	}
 
 	logger.Info("Installing Go...")
+	archivePath := filepath.Join("/tmp/usetup", cfg.FileName)
+	targetFolder := "go" + cfg.Version
 	if err := installer.Extract(archivePath, cfg.InstallDir, targetFolder); err != nil {
 		return err
 	}

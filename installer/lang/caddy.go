@@ -11,8 +11,22 @@ import (
 	"strings"
 )
 
+// IsCaddyFrankenPHPInstalled checks if Caddy is already swapped with FrankenPHP.
+func IsCaddyFrankenPHPInstalled() bool {
+	var out bytes.Buffer
+	cmdVer := exec.Command("caddy", "version")
+	cmdVer.Stdout = &out
+	_ = cmdVer.Run()
+	return strings.Contains(out.String(), "FrankenPHP")
+}
+
 // InstallCaddyFrankenPHP installs Caddy, downloads FrankenPHP, swaps caddy with frankenphp, and enables the systemd service.
 func InstallCaddyFrankenPHP() error {
+	if IsCaddyFrankenPHPInstalled() {
+		logger.Warning("Caddy with FrankenPHP is already installed. Skipping...")
+		return nil
+	}
+
 	logger.Info("Installing Caddy...")
 
 	// Enable COPR repo
