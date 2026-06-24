@@ -5,17 +5,18 @@ import (
 	"os"
 	"path/filepath"
 	"setup/config"
+	"setup/logger"
 	"setup/sysutils"
 )
 
 // InstallPython installs UV python manager and uses it to install Python.
 func InstallPython() error {
 	if sysutils.CommandExists("python") || sysutils.CommandExists("python3") {
-		fmt.Println("[usetup] Python is already available. Skipping...")
+		logger.Warning("Python is already available. Skipping...")
 		return nil
 	}
 
-	fmt.Println("[usetup] Installing Python via UV...")
+	logger.Info("Installing Python via UV...")
 
 	uvInstallDir := filepath.Join(config.PublicSourceDir, "uv")
 	os.Setenv("UV_INSTALL_DIR", uvInstallDir)

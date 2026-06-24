@@ -1,7 +1,7 @@
 package installer
 
 import (
-	"fmt"
+	"setup/logger"
 	"setup/sysutils"
 )
 
@@ -22,7 +22,7 @@ func Package(pkgs ...string) error {
 func IsPackageInstalled(packageName string) bool {
 	err := sysutils.RunCommand("rpm", "-q", packageName)
 	if err == nil {
-		fmt.Printf("[usetup] Package %s is already installed. Skipping...\n", packageName)
+		logger.Warning("%s is already installed. Skipping...", packageName)
 		return true
 	}
 	return false

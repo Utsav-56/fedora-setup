@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	"setup/installer/browser"
 	"setup/installer/ide"
 	"setup/installer/lang"
+	"setup/logger"
 	"setup/sysutils"
 )
 
@@ -28,31 +28,31 @@ var (
 var dl *downloader.Downloader
 
 func init() {
-	println("==========================================")
-	println("            USETUP FEDORA GO              ")
-	println("==========================================")
+	logger.Info("==========================================")
+	logger.Info("            USETUP FEDORA GO              ")
+	logger.Info("==========================================")
 
 	// 1. Root Check
 	if !sysutils.IsRoot() {
-		fmt.Println("Error: This setup application must be run as root.")
+		logger.Error("This setup application must be run as root.")
 		os.Exit(1)
 	}
 
 	// 2. Ensure DNF Package Manager
 	if !sysutils.CommandExists("dnf") {
-		fmt.Println("Error: This setup is designed specifically for Fedora/DNF environments.")
+		logger.Error("This setup is designed specifically for Fedora/DNF environments.")
 		os.Exit(1)
 	}
 
 	// 3. Bootstrapping Core Package Dependencies
-	fmt.Println("[usetup] Bootstrapping core packages (aria2, acl, git, etc.)...")
+	logger.Info("Bootstrapping core packages (aria2, acl, git, etc.)...")
 	corePkgs := config.CorePackages
 	if err := installer.Package(corePkgs...); err != nil {
-		fmt.Printf("Warning: failed to install some core packages: %v\n", err)
+		logger.Warning("failed to install some core packages: %v", err)
 	}
 
 	// 4. Start Aria2 RPC Daemon
-	fmt.Println("[usetup] Launching Aria2 RPC daemon...")
+	logger.Info("Launching Aria2 RPC daemon...")
 	_ = exec.Command("pkill", "-f", "aria2c.*67486").Run() // clean up any previous instance
 	cmd := exec.Command("aria2c",
 		"--enable-rpc",
@@ -62,7 +62,7 @@ func init() {
 		"--daemon=true",
 	)
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("Warning starting aria2c: %v\n", err)
+		logger.Warning("starting aria2c: %v", err)
 	}
 
 	// Give the daemon a moment to bind
@@ -78,7 +78,7 @@ func init() {
 func main() {
 	// Ensure we shut down the aria2c daemon at exit
 	defer func() {
-		fmt.Println("[usetup] Cleaning up Aria2 RPC daemon...")
+		logger.Info("Cleaning up Aria2 RPC daemon...")
 		_ = exec.Command("pkill", "-f", "aria2c.*67486").Run()
 	}()
 
@@ -92,13 +92,12 @@ func main() {
 		config.AppXdgDir,
 		config.PoshThemeDir,
 	}
-	fmt.Println("[usetup] Preparing workspace directory structure...")
+	logger.Info("Preparing workspace directory structure...")
 	if err := sysutils.SetupWorkspaceDirs(config.PublicSourceDir, workspaceDirs, config.DefaultUserGroup); err != nil {
-		fmt.Printf("Error configuring workspace directories: %v\n", err)
+		logger.Error("Configuring workspace directories: %v", err)
 		os.Exit(1)
 	}
 
-	// 2. Interactive Selection Prompts
 	langOpts := []huh.Option[string]{
 		huh.NewOption("Node.js", "Node.js"),
 		huh.NewOption("Bun", "Bun"),
@@ -147,11 +146,10 @@ func main() {
 	)
 
 	if err := form.Run(); err != nil {
-		fmt.Printf("Selection canceled: %v\n", err)
+		logger.Warning("Selection canceled: %v", err)
 		return
 	}
 
-	// 3. Compile Download Requests for parallel downloads
 	downloadRequests := []downloader.DownloadRequest{}
 	tempDir := "/tmp/usetup"
 	_ = os.MkdirAll(tempDir, 0777)
@@ -191,7 +189,7 @@ func main() {
 
 	// 4. Execute Parallel Downloads
 	if len(downloadRequests) > 0 {
-		fmt.Printf("[usetup] Downloading %d selected package archives...\n", len(downloadRequests))
+		logger.Info("Downloading %d selected package archives...", len(downloadRequests))
 		res, err := dl.DownloadBatch(
 			tempDir,
 			downloader.BatchOptions{
@@ -201,12 +199,12 @@ func main() {
 			downloadRequests,
 		)
 		if err != nil {
-			fmt.Printf("Error queuing downloads: %v\n", err)
+			logger.Error("Error queuing downloads: %v", err)
 			os.Exit(1)
 		}
 
 		if err := downloader.ShowBatchProgress(res); err != nil {
-			fmt.Printf("Download error details: %v\n", err)
+			logger.Warning("Download error details: %v", err)
 		}
 	}
 
@@ -219,14 +217,14 @@ func main() {
 		scriptDir = "/home/hwakins/setup/shell-scripts"
 	}
 	if err := sysutils.InstallShellConfig(scriptDir, config.PublicSourceDir); err != nil {
-		fmt.Printf("Warning: failed to install login environment script: %v\n", err)
+		logger.Warning("failed to install login environment script: %v", err)
 	}
 
 	// 6. Setup ZSH shell features if requested
 	if slices.Contains(config.CorePackages, "zsh") {
-		fmt.Println("[usetup] Initializing Zsh setup...")
+		logger.Info("Initializing Zsh setup...")
 		if err := sysutils.RunCommand("bash", filepath.Join(scriptDir, "zsh-init.sh")); err != nil {
-			fmt.Printf("Warning: ZSH bootstrap failed: %v\n", err)
+			logger.Warning("ZSH bootstrap failed: %v", err)
 		}
 	}
 
@@ -235,7 +233,7 @@ func main() {
 
 	// 8. Bootstrap Witr tool
 	if !sysutils.CommandExists("witr") {
-		fmt.Println("[usetup] Bootstrapping Witr...")
+		logger.Info("Bootstrapping Witr...")
 		_ = sysutils.RunCommand("bash", "-c", "curl -fsSL https://raw.githubusercontent.com/pranshuparmar/witr/main/install.sh | bash")
 	}
 
@@ -261,7 +259,7 @@ func main() {
 			err = lang.InstallCaddyFrankenPHP()
 		}
 		if err != nil {
-			fmt.Printf("Error installing %s: %v\n", l, err)
+			logger.Error("installing %s: %v", l, err)
 		}
 	}
 
@@ -279,7 +277,7 @@ func main() {
 			err = browser.InstallCodecs()
 		}
 		if err != nil {
-			fmt.Printf("Error installing %s: %v\n", b, err)
+			logger.Error("installing %s: %v", b, err)
 		}
 	}
 
@@ -299,40 +297,40 @@ func main() {
 			err = ide.InstallZed(config.Tools["zed"])
 		}
 		if err != nil {
-			fmt.Printf("Error installing %s: %v\n", i, err)
+			logger.Error("installing %s: %v", i, err)
 		}
 	}
 
 	// 12. Final Perms Sweeping
-	fmt.Println("[usetup] Performing final ownership and permissions sweep...")
+	logger.Info("Performing final ownership and permissions sweep...")
 	if err := sysutils.SweepACL(config.PublicSourceDir, config.DefaultUserGroup); err != nil {
-		fmt.Printf("Warning: final permissions sweep failed: %v\n", err)
+		logger.Warning("final permissions sweep failed: %v", err)
 	}
 
-	fmt.Println("[usetup] Setup complete. The shared workspace under /src is fully configured.")
+	logger.Success("Setup complete. The shared workspace under /src is fully configured.")
 }
 
 func ensureOhMyPosh() {
 	poshBin := filepath.Join(config.PoshDir, "bin/oh-my-posh")
 	if sysutils.CommandExists("oh-my-posh") || sysutils.CommandExists(poshBin) {
-		fmt.Println("[usetup] Oh My Posh already available. Checking themes...")
+		logger.Warning("Oh My Posh already available. Checking themes...")
 		ensurePoshThemes()
 		return
 	}
 
-	fmt.Println("[usetup] Bootstrapping Oh My Posh...")
+	logger.Info("Bootstrapping Oh My Posh...")
 	poshBinDir := filepath.Join(config.PoshDir, "bin")
 	_ = os.MkdirAll(poshBinDir, 0755)
 
 	scriptPath := "/tmp/posh_install.sh"
 	if err := sysutils.RunCommand("curl", "-sSL", "https://ohmyposh.dev/install.sh", "-o", scriptPath); err != nil {
-		fmt.Printf("Warning: failed to download Oh My Posh installer: %v\n", err)
+		logger.Warning("failed to download Oh My Posh installer: %v", err)
 		return
 	}
 	defer os.Remove(scriptPath)
 
 	if err := sysutils.RunCommand("bash", scriptPath, "-d", poshBinDir); err != nil {
-		fmt.Printf("Warning: failed to execute Oh My Posh installer: %v\n", err)
+		logger.Warning("failed to execute Oh My Posh installer: %v", err)
 		return
 	}
 

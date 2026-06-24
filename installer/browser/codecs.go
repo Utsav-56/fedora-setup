@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"os/exec"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 	"strings"
 )
 
 // InstallCodecs installs proprietary media codecs, RPMFusion repositories, swaps ffmpeg-free, and installs VLC.
 func InstallCodecs() error {
-	fmt.Println("[usetup] Installing proprietary media codecs...")
+	logger.Info("Installing proprietary media codecs...")
 
 	fedoraVerBytes, err := exec.Command("rpm", "-E", "%fedora").Output()
 	if err != nil {
@@ -26,7 +27,7 @@ func InstallCodecs() error {
 	}
 
 	if err := sysutils.RunCommand("dnf", "swap", "-y", "ffmpeg-free", "ffmpeg", "--allowerasing"); err != nil {
-		fmt.Printf("ffmpeg swap warning: %v\n", err)
+		logger.Warning("ffmpeg swap warning: %v", err)
 	}
 
 	return installer.Package("vlc-plugins-freeworld", "vlc")

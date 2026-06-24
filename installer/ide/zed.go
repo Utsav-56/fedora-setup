@@ -1,10 +1,10 @@
 package ide
 
 import (
-	"fmt"
 	"path/filepath"
 	"setup/config"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 	fs "setup/utils"
 )
@@ -17,7 +17,7 @@ func InstallZed(cfg *config.ToolConfig) error {
 		return nil
 	}
 
-	fmt.Println("[usetup] Installing Zed Editor...")
+	logger.Info("Installing Zed Editor...")
 	if err := installer.Extract(archivePath, cfg.InstallDir, ""); err != nil {
 		return err
 	}

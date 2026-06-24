@@ -1,10 +1,10 @@
 package lang
 
 import (
-	"fmt"
 	"path/filepath"
 	"setup/config"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 )
 
@@ -16,7 +16,7 @@ func InstallDart(cfg *config.ToolConfig) error {
 		return nil
 	}
 
-	fmt.Printf("[usetup] Installing Dart & Flutter SDK...\n")
+	logger.Info("Installing Dart & Flutter SDK...")
 	if err := installer.Extract(archivePath, cfg.InstallDir, "flutter"); err != nil {
 		return err
 	}

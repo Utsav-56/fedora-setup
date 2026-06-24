@@ -6,17 +6,18 @@ import (
 	"os"
 	"os/exec"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 	"strings"
 )
 
 // InstallCaddyFrankenPHP installs Caddy, downloads FrankenPHP, swaps caddy with frankenphp, and enables the systemd service.
 func InstallCaddyFrankenPHP() error {
-	fmt.Println("[usetup] Installing Caddy...")
+	logger.Info("Installing Caddy...")
 
 	// Enable COPR repo
 	if err := sysutils.RunCommand("dnf", "install", "-y", "dnf5-plugins"); err != nil {
-		fmt.Printf("dnf5-plugins install warning: %v\n", err)
+		logger.Warning("dnf5-plugins install warning: %v", err)
 	}
 	if err := sysutils.RunCommand("dnf", "copr", "enable", "-y", "@caddy/caddy"); err != nil {
 		return fmt.Errorf("failed to enable caddy COPR repository: %w", err)
@@ -25,7 +26,7 @@ func InstallCaddyFrankenPHP() error {
 		return err
 	}
 
-	fmt.Println("[usetup] Installing FrankenPHP...")
+	logger.Info("Installing FrankenPHP...")
 	scriptPath := "/tmp/frankenphp_install.sh"
 	if err := sysutils.RunCommand("curl", "-fsSL", "https://frankenphp.dev/install.sh", "-o", scriptPath); err != nil {
 		return fmt.Errorf("failed to download frankenphp installer: %w", err)
@@ -55,7 +56,7 @@ func InstallCaddyFrankenPHP() error {
 	cmdVer.Stdout = &out
 	_ = cmdVer.Run()
 	if strings.Contains(out.String(), "FrankenPHP") {
-		fmt.Println("[usetup] Caddy is already FrankenPHP. Skipping swap.")
+		logger.Warning("Caddy is already FrankenPHP. Skipping swap.")
 		return nil
 	}
 
@@ -74,7 +75,7 @@ func InstallCaddyFrankenPHP() error {
 		}
 	}
 
-	fmt.Println("[usetup] Swapping Caddy with FrankenPHP...")
+	logger.Info("Swapping Caddy with FrankenPHP...")
 	caddyBackup := caddyPath + ".bak"
 	_ = os.Remove(caddyBackup)
 	if err := os.Rename(caddyPath, caddyBackup); err != nil {
@@ -89,7 +90,7 @@ func InstallCaddyFrankenPHP() error {
 	}
 
 	if err := sysutils.RunCommand("systemctl", "enable", "caddy"); err != nil {
-		fmt.Printf("systemctl enable caddy warning: %v\n", err)
+		logger.Warning("systemctl enable caddy warning: %v", err)
 	}
 
 	return nil

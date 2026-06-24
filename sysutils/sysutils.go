@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"setup/logger"
 	"strings"
 )
 
@@ -74,11 +75,11 @@ func GetCurrentUser() string {
 // SweepACL configures group/owner permissions on the specified workspace path.
 func SweepACL(publicSourceDir, defaultUserGroup string) error {
 	if !CommandExists("setfacl") {
-		fmt.Println("setfacl not found. Attempting to install acl...")
+		logger.Info("setfacl not found. Attempting to install acl...")
 		_ = RunCommand("dnf", "install", "-y", "acl")
 	}
 
-	fmt.Printf("[usetup] Configuring permissions on %s...\n", publicSourceDir)
+	logger.Info("Configuring permissions on %s...", publicSourceDir)
 
 	// 1. Ownership: root:shared
 	if err := RunCommand("chown", "-R", "root:"+defaultUserGroup, publicSourceDir); err != nil {
@@ -99,9 +100,9 @@ func SweepACL(publicSourceDir, defaultUserGroup string) error {
 		if err1 != nil || err2 != nil {
 			return fmt.Errorf("setfacl failed: err1=%v, err2=%v", err1, err2)
 		}
-		fmt.Println("[usetup] Access Control Lists (ACLs) configured successfully.")
+		logger.Success("Access Control Lists (ACLs) configured successfully.")
 	} else {
-		fmt.Println("[usetup] WARNING: ACL support unavailable. Group inheritance relies solely on SetGID.")
+		logger.Warning("ACL support unavailable. Group inheritance relies solely on SetGID.")
 	}
 	return nil
 }
@@ -117,7 +118,7 @@ func SetupWorkspaceDirs(publicSourceDir string, dirs []string, defaultUserGroup 
 
 	// Create shared group if it doesn't exist
 	if !GroupExists(defaultUserGroup) {
-		fmt.Printf("[usetup] Creating group '%s'...\n", defaultUserGroup)
+		logger.Info("Creating group '%s'...", defaultUserGroup)
 		if err := CreateGroup(defaultUserGroup); err != nil {
 			return err
 		}
@@ -127,11 +128,11 @@ func SetupWorkspaceDirs(publicSourceDir string, dirs []string, defaultUserGroup 
 	currUser := GetCurrentUser()
 	if currUser != "root" {
 		if !UserInGroup(currUser, defaultUserGroup) {
-			fmt.Printf("[usetup] Adding user '%s' to group '%s'...\n", currUser, defaultUserGroup)
+			logger.Info("Adding user '%s' to group '%s'...", currUser, defaultUserGroup)
 			if err := AddUserToGroup(currUser, defaultUserGroup); err != nil {
 				return err
 			}
-			fmt.Println("[usetup] NOTE: User must re-login for group membership to become active.")
+			logger.Info("NOTE: User must re-login for group membership to become active.")
 		}
 	}
 
@@ -164,14 +165,14 @@ func LinkFiles(targetPath, destDir string) error {
 				}
 			}
 		}
-		fmt.Printf("[usetup] Linked files from folder '%s' -> %s\n", filepath.Base(targetPath), destDir)
+		logger.Success("Linked files from folder '%s' -> %s", filepath.Base(targetPath), destDir)
 	} else {
 		dst := filepath.Join(destDir, filepath.Base(targetPath))
 		_ = os.Remove(dst)
 		if err := os.Symlink(targetPath, dst); err != nil {
 			return fmt.Errorf("failed to link file %s: %w", filepath.Base(targetPath), err)
 		}
-		fmt.Printf("[usetup] Linked file '%s' -> %s\n", filepath.Base(targetPath), destDir)
+		logger.Success("Linked file '%s' -> %s", filepath.Base(targetPath), destDir)
 	}
 	return nil
 }
@@ -217,7 +218,7 @@ func UnlinkFiles(targetPath, destDir string) error {
 				absLinkVal, err := filepath.Abs(linkVal)
 				if err == nil && (absLinkVal == absTarget || strings.HasPrefix(absLinkVal, absTarget+string(filepath.Separator))) {
 					_ = os.Remove(itemPath)
-					fmt.Printf("[usetup] Removed dead link: %s\n", entry.Name())
+					logger.Success("Removed dead link: %s", entry.Name())
 				}
 			}
 			continue
@@ -225,10 +226,10 @@ func UnlinkFiles(targetPath, destDir string) error {
 
 		if resolvedPath == absTarget {
 			_ = os.Remove(itemPath)
-			fmt.Printf("[usetup] Removed link: %s\n", entry.Name())
+			logger.Success("Removed link: %s", entry.Name())
 		} else if strings.HasPrefix(resolvedPath, absTarget+string(filepath.Separator)) {
 			_ = os.Remove(itemPath)
-			fmt.Printf("[usetup] Removed internal link: %s\n", entry.Name())
+			logger.Success("Removed internal link: %s", entry.Name())
 		}
 	}
 	return nil
@@ -262,10 +263,10 @@ func InstallShellConfig(scriptDir, publicSourceDir string) error {
 		if err := CopyFile(srcLogin, destLogin, 0755); err != nil {
 			return fmt.Errorf("failed to copy login.sh: %w", err)
 		}
-		fmt.Printf("[usetup] Copied login.sh to %s\n", destLogin)
+		logger.Success("Copied login.sh to %s", destLogin)
 	} else {
 		// Fallback: create empty login.sh if sibling file missing
-		fmt.Println("[usetup] WARNING: path_login.sh not found in script directory. Creating empty fallback.")
+		logger.Warning("path_login.sh not found in script directory. Creating empty fallback.")
 		if err := os.WriteFile(destLogin, []byte("# empty fallback"), 0755); err != nil {
 			return err
 		}
@@ -275,6 +276,6 @@ func InstallShellConfig(scriptDir, publicSourceDir string) error {
 	if err := os.Symlink(destLogin, profileDLink); err != nil {
 		return fmt.Errorf("failed to symlink profile.d loader: %w", err)
 	}
-	fmt.Printf("[usetup] Linked profile loader to %s\n", profileDLink)
+	logger.Success("Linked profile loader to %s", profileDLink)
 	return nil
 }

@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"os"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 )
 
 // InstallPodman installs podman, podman-compose and configures search registries.
 func InstallPodman() error {
 	if !sysutils.CommandExists("podman") {
-		fmt.Println("[usetup] Installing Podman...")
+		logger.Info("Installing Podman...")
 		if err := installer.Package("podman"); err != nil {
 			return err
 		}
@@ -33,7 +34,7 @@ func InstallPodman() error {
 	}
 
 	if !installer.IsPackageInstalled("podman-compose") {
-		fmt.Println("[usetup] Installing Podman Compose...")
+		logger.Info("Installing Podman Compose...")
 		if err := installer.Package("podman-compose"); err != nil {
 			return err
 		}

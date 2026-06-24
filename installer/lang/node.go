@@ -5,17 +5,18 @@ import (
 	"os"
 	"path/filepath"
 	"setup/config"
+	"setup/logger"
 	"setup/sysutils"
 )
 
 // InstallNode downloads FNM, installs Node.js, and activates corepack pnpm.
 func InstallNode() error {
 	if sysutils.CommandExists("node") {
-		fmt.Println("[usetup] Node.js is already available. Skipping...")
+		logger.Warning("Node.js is already available. Skipping...")
 		return nil
 	}
 
-	fmt.Println("[usetup] Installing Node.js via FNM...")
+	logger.Info("Installing Node.js via FNM...")
 
 	fnmDir := filepath.Join(config.PublicSourceDir, "fnm")
 	if err := os.MkdirAll(fnmDir, 0755); err != nil {

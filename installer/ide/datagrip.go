@@ -1,10 +1,10 @@
 package ide
 
 import (
-	"fmt"
 	"path/filepath"
 	"setup/config"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 	fs "setup/utils"
 )
@@ -17,7 +17,7 @@ func InstallDataGrip(cfg *config.ToolConfig) error {
 		return nil
 	}
 
-	fmt.Println("[usetup] Installing JetBrains DataGrip...")
+	logger.Info("Installing JetBrains DataGrip...")
 	if err := installer.Extract(archivePath, cfg.InstallDir, ""); err != nil {
 		return err
 	}

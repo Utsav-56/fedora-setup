@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"setup/config"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 	fs "setup/utils"
 )
@@ -18,7 +19,7 @@ func InstallAntigravity(cfg *config.ToolConfig) error {
 		return nil
 	}
 
-	fmt.Println("[usetup] Installing Antigravity IDE...")
+	logger.Info("Installing Antigravity IDE...")
 	if err := installer.Extract(archivePath, cfg.InstallDir, ""); err != nil {
 		return err
 	}

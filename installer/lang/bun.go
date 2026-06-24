@@ -5,17 +5,18 @@ import (
 	"os"
 	"path/filepath"
 	"setup/config"
+	"setup/logger"
 	"setup/sysutils"
 )
 
 // InstallBun installs Bun JavaScript runtime.
 func InstallBun() error {
 	if sysutils.CommandExists("bun") {
-		fmt.Println("[usetup] Bun is already available. Skipping...")
+		logger.Warning("Bun is already available. Skipping...")
 		return nil
 	}
 
-	fmt.Println("[usetup] Installing Bun...")
+	logger.Info("Installing Bun...")
 
 	bunInstall := filepath.Join(config.PublicSourceDir, "bun")
 	os.Setenv("BUN_INSTALL", bunInstall)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"setup/logger"
 	"strings"
 )
 
@@ -62,7 +63,7 @@ func InstallRpm(path string) error {
 	}
 
 	if isInstalled {
-		fmt.Printf("%s is already installed", path)
+		logger.Warning("%s is already installed. Skipping...", path)
 		return nil
 	}
 

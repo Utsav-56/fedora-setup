@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"setup/config"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 )
 
@@ -14,11 +15,11 @@ func InstallVSCode(cfg *config.ToolConfig) error {
 	rpmPath := filepath.Join("/tmp/usetup", cfg.FileName)
 	isInstalled, err := installer.IsRPMInstalled(rpmPath)
 	if err == nil && isInstalled {
-		fmt.Println("[usetup] VS Code is already installed. Skipping...")
+		logger.Warning("VS Code is already installed. Skipping...")
 		return nil
 	}
 
-	fmt.Println("[usetup] Installing VS Code...")
+	logger.Info("Installing VS Code...")
 	if err := installer.InstallRpm(rpmPath); err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func InstallVSCode(cfg *config.ToolConfig) error {
 	}
 
 	// Install extensions
-	fmt.Println("[usetup] Installing VS Code extensions...")
+	logger.Info("Installing VS Code extensions...")
 	for _, ext := range config.VSCodeExtensions {
 		if currUser != "root" {
 			// Run as the actual user to avoid permissions issues

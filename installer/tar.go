@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"setup/logger"
 	"strings"
 	"time"
 
@@ -78,7 +79,7 @@ func Extract(archivePath, outputPath, targetFolderName string) error {
 
 	isInstalled := IsTarInstalled(archivePath, outputPath, targetFolderName)
 	if isInstalled {
-		fmt.Printf("[usetup] the file %s is already installed → skipping extraction", archivePath)
+		logger.Warning("the file %s is already installed → skipping extraction", archivePath)
 		return nil
 	}
 
@@ -100,7 +101,7 @@ func Extract(archivePath, outputPath, targetFolderName string) error {
 		return fmt.Errorf("format %s does not support extraction", format.Extension())
 	}
 
-	fmt.Println("[usetup] extracting:", archivePath)
+	logger.Info("Extracting: %s", archivePath)
 
 	// Variables to track single root folder behavior dynamically
 	var detectedRoot string
@@ -177,7 +178,7 @@ func Extract(archivePath, outputPath, targetFolderName string) error {
 		return fmt.Errorf("failed to write install-info: %w", err)
 	}
 
-	fmt.Println("[usetup] extraction complete")
+	logger.Success("Extraction complete")
 	return nil
 }
 

@@ -5,13 +5,14 @@ import (
 	"os"
 	"path/filepath"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 )
 
 // InstallNeovim installs neovim and clones LazyVim configuration template.
 func InstallNeovim() error {
 	if !installer.IsPackageInstalled("neovim") {
-		fmt.Println("[usetup] Installing Neovim...")
+		logger.Info("Installing Neovim...")
 		if err := installer.Package("neovim"); err != nil {
 			return err
 		}
@@ -27,7 +28,7 @@ func InstallNeovim() error {
 
 	nvimConfigDir := filepath.Join(userHome, ".config/nvim")
 	if _, err := os.Stat(nvimConfigDir); os.IsNotExist(err) {
-		fmt.Println("[usetup] Bootstrapping LazyVim config...")
+		logger.Info("Bootstrapping LazyVim config...")
 		if err := sysutils.RunCommand("git", "clone", "https://github.com/LazyVim/starter", nvimConfigDir); err != nil {
 			return fmt.Errorf("failed to clone LazyVim starter: %w", err)
 		}
@@ -38,7 +39,7 @@ func InstallNeovim() error {
 			_ = sysutils.RunCommand("chown", "-R", currUser+":", nvimConfigDir)
 		}
 	} else {
-		fmt.Println("[usetup] Neovim config already exists. Skipping config bootstrap.")
+		logger.Warning("Neovim config already exists. Skipping config bootstrap.")
 	}
 
 	return nil

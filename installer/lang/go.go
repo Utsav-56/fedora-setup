@@ -1,10 +1,10 @@
 package lang
 
 import (
-	"fmt"
 	"path/filepath"
 	"setup/config"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 )
 
@@ -16,7 +16,7 @@ func InstallGo(cfg *config.ToolConfig) error {
 		return nil
 	}
 
-	fmt.Printf("[usetup] Installing Go...\n")
+	logger.Info("Installing Go...")
 	if err := installer.Extract(archivePath, cfg.InstallDir, "go"); err != nil {
 		return err
 	}

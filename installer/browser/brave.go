@@ -3,6 +3,7 @@ package browser
 import (
 	"fmt"
 	"setup/installer"
+	"setup/logger"
 	"setup/sysutils"
 )
 
@@ -12,7 +13,7 @@ func InstallBrave() error {
 		return nil
 	}
 
-	fmt.Println("[usetup] Installing Brave Browser...")
+	logger.Info("Installing Brave Browser...")
 	if err := installer.Package("dnf-plugins-core"); err != nil {
 		return err
 	}

@@ -5,17 +5,18 @@ import (
 	"os"
 	"path/filepath"
 	"setup/config"
+	"setup/logger"
 	"setup/sysutils"
 )
 
 // InstallRust installs the Rust toolchain via rustup.
 func InstallRust() error {
 	if sysutils.CommandExists("rustc") {
-		fmt.Println("[usetup] Rust is already available. Skipping...")
+		logger.Warning("Rust is already available. Skipping...")
 		return nil
 	}
 
-	fmt.Println("[usetup] Installing Rust...")
+	logger.Info("Installing Rust...")
 
 	rustupHome := filepath.Join(config.PublicSourceDir, "rust", "rustup")
 	cargoHome := filepath.Join(config.PublicSourceDir, "rust", "cargo")
