@@ -1,9 +1,7 @@
 package main
 
 import (
-	"crypto/sha256"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"setup/downloader"
@@ -29,6 +27,12 @@ var (
 	DNF    = "dnf"
 	APTD   = "apt-get"
 	PACMAN = "pacman"
+)
+
+// the possible sources of install also includes dnf
+var (
+	TAR = ".tar."
+	RPM = ".rpm"
 )
 
 var availablePackageManager string
@@ -239,22 +243,6 @@ func chooseOptions(header string, options []string) ([]string, error) {
 	}
 
 	return selected, nil
-}
-
-func sha256OfFile(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	h := sha256.New()
-	_, err = io.Copy(h, f)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
 func init() {
