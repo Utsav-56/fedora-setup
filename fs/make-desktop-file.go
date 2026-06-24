@@ -65,6 +65,10 @@ func (config *DesktopFileConfig) sanitize() error {
 // MakeDesktopFile generates a compliant .desktop entry and saves it to the specified targetDirectory.
 func MakeDesktopFile(config DesktopFileConfig, targetDirectory string) error {
 
+	if err := config.sanitize(); err != nil {
+		return err
+	}
+
 	fileName := fmt.Sprintf("%s.desktop", strings.ReplaceAll(config.Name, " ", "_"))
 	saveFilePath := filepath.Join(targetDirectory, fileName)
 

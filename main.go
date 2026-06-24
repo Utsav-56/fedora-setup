@@ -111,39 +111,7 @@ func run(cmd string, args ...string) error {
 	return nil
 }
 
-func isRPMInstalled(rpmFile string) (bool, error) {
-	// get package name from rpm file
-	nameBytes, err := exec.Command(
-		"rpm", "-qp", "--qf", "%{NAME}", rpmFile,
-	).Output()
-	if err != nil {
-		return false, err
-	}
-	name := strings.TrimSpace(string(nameBytes))
 
-	// get NEVRA from rpm file
-	fileNevraBytes, err := exec.Command(
-		"rpm", "-qp", "--qf", "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}", rpmFile,
-	).Output()
-	if err != nil {
-		return false, err
-	}
-	fileNevra := strings.TrimSpace(string(fileNevraBytes))
-
-	// get installed NEVRA (may fail if not installed)
-	installedNevraBytes, err := exec.Command(
-		"rpm", "-q", "--qf", "%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}", name,
-	).Output()
-
-	if err != nil {
-		return false, nil // not installed = false, no error
-	}
-
-	installedNevra := strings.TrimSpace(string(installedNevraBytes))
-
-	// compare
-	return fileNevra == installedNevra, nil
-}
 
 func install(pkgs ...Package) error {
 	if len(pkgs) == 0 {
