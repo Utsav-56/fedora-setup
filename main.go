@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"setup/downloader"
-	"strings"
 
 	"charm.land/huh/v2"
 )
@@ -110,8 +109,6 @@ func run(cmd string, args ...string) error {
 
 	return nil
 }
-
-
 
 func install(pkgs ...Package) error {
 	if len(pkgs) == 0 {
