@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func isRPMInstalled(rpmFile string) (bool, error) {
+func IsRPMInstalled(rpmFile string) (bool, error) {
 	// get package name from rpm file
 	nameBytes, err := exec.Command(
 		"rpm", "-qp", "--qf", "%{NAME}", rpmFile,
@@ -56,7 +56,7 @@ func run(cmd string, args ...string) error {
 }
 
 func InstallRpm(path string) error {
-	isInstalled, err := isRPMInstalled(path)
+	isInstalled, err := IsRPMInstalled(path)
 	if err != nil {
 		return err
 	}
