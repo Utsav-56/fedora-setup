@@ -4,226 +4,353 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"setup/downloader"
+	"path/filepath"
+	"slices"
+	"time"
 
 	"charm.land/huh/v2"
-)
 
-const (
-	GOLANG_DOWNLOAD_LINK = "https://dl.google.com/go/go1.22.4.linux-amd64.tar.gz"
-
-	DART_DOWNLOAD_LINK                = "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.44.2-stable.tar.xz"
-	JETBRAINS_DATA_GRIP_DOWNLOAD_LINK = "https://download-cdn.jetbrains.com/datagrip/datagrip-2026.1.3.tar.gz"
-
-	CHROME_DOWNLOAD_LINK      = "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
-	ANTIGRAVITY_DOWNLOAD_LINK = "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.0.4-6381998290370560/linux-x64/Antigravity%20IDE.tar.gz"
-	VS_CODE_DOWNLOAD_LINK     = "https://vscode.download.prss.microsoft.com/dbazure/download/stable/93cfdd489c3b228840d0f86ec77c3636277c93ea/code-1.125.0-1781601611.el8.x86_64.rpm"
-	ZED_DOWNLOAD_LINK         = "https://release-assets.githubusercontent.com/github-production-release-asset/340547520/5371e7e4-8f6c-499b-aed7-e249742fb2f1?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-06-18T17%3A13%3A48Z&rscd=attachment%3B+filename%3Dzed-linux-x86_64.tar.gz&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-06-18T16%3A13%3A03Z&ske=2026-06-18T17%3A13%3A48Z&sks=b&skv=2018-11-09&sig=EnTHa8T5nJ62L3PDKG00L9pNexX2DyFMJpoZaZwjMgA%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4MTgwNDMzNywibmJmIjoxNzgxODAwNzM3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.i0P-U3C1fzCU605pDuqPao6ff7dO9LmHr8Hyk87ZSW4&response-content-disposition=attachment%3B%20filename%3Dzed-linux-x86_64.tar.gz&response-content-type=application%2Foctet-stream"
-	BITWARDEN_DOWNLOAD_LINK   = "https://release-assets.githubusercontent.com/github-production-release-asset/53538899/e355eb83-eed4-49d4-9846-9cbb9de5c48b?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-06-18T17%3A40%3A23Z&rscd=attachment%3B+filename%3DBitwarden-2026.5.0-x86_64.rpm&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-06-18T16%3A39%3A39Z&ske=2026-06-18T17%3A40%3A23Z&sks=b&skv=2018-11-09&sig=rz%2F7543y%2FH5qx4V%2BJpfso8Y4fdJ%2BiJRNftw6yWB8UKk%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4MTgwNTI2OSwibmJmIjoxNzgxODAxNjY5LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.izDZptSBRiT8W1hxIRcK2sP6bF3ZVhQ9bdmtZJ3oPcs&response-content-disposition=attachment%3B%20filename%3DBitwarden-2026.5.0-x86_64.rpm&response-content-type=application%2Foctet-stream"
+	"setup/config"
+	"setup/downloader"
+	"setup/installer"
+	"setup/installer/browser"
+	"setup/installer/ide"
+	"setup/installer/lang"
+	"setup/sysutils"
 )
 
 var (
-	DNF    = "dnf"
-	APTD   = "apt-get"
-	PACMAN = "pacman"
+	selectedLangs    []string
+	selectedBrowsers []string
+	selectedIDEs     []string
 )
 
-// the possible sources of install also includes dnf
-var (
-	TAR = ".tar."
-	RPM = ".rpm"
-)
+var dl *downloader.Downloader
 
-var availablePackageManager string
+func init() {
+	println("==========================================")
+	println("            USETUP FEDORA GO              ")
+	println("==========================================")
 
-var dl = downloader.NewDownloader(downloader.Config{
-	Host:   "localhost",
-	Port:   "67486",
-	Secret: "UsetupSecretKeyValue",
-})
-
-// similar alternative to cmd-exists() { command -v "$1" >/dev/null 2>&1; }
-// Why this is the right approach
-// 1. exec.LookPath searches the directories in $PATH
-// 2. It works like command -v or which
-// 3. It does not depend on the command supporting -v or any flags
-// 4. It is portable across Unix/Linux/macOS/Windows
-func cmdExists(name string) bool {
-	_, err := exec.LookPath(name)
-	return err == nil
-}
-
-// package identifier for the package it contains the name and package for each distro package managers
-//
-// There may also be packages which differs in command and name like facl and setfacl so we should ensure that
-type Package struct {
-	// the identification name of the package as geenric like aria2c and so on
-	Name string
-
-	// the name of the package in the apt manager
-	Apt    string
-	Dnf    string
-	Pacman string
-
-	// the command to see if it exists or not, for e.g package name is aria2 but the command to check is aria2c  so this is optional but better to have field
-	CheckCmd string
-}
-
-func (p Package) exists() bool {
-
-	if p.CheckCmd == "" {
-		return cmdExists(p.Name)
+	// 1. Root Check
+	if !sysutils.IsRoot() {
+		fmt.Println("Error: This setup application must be run as root.")
+		os.Exit(1)
 	}
 
-	return cmdExists(p.CheckCmd)
-}
-
-func (p Package) resolve(mgr string) string {
-	switch mgr {
-	case DNF:
-		if p.Dnf != "" {
-			return p.Dnf
-		}
-	case APTD:
-		if p.Apt != "" {
-			return p.Apt
-		}
-	case PACMAN:
-		if p.Pacman != "" {
-			return p.Pacman
-		}
-	}
-	return p.Name
-}
-
-func run(cmd string, args ...string) error {
-	c := exec.Command(cmd, args...)
-
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	c.Stdin = os.Stdin
-
-	if err := c.Run(); err != nil {
-		return fmt.Errorf("command failed: %w", err)
+	// 2. Ensure DNF Package Manager
+	if !sysutils.CommandExists("dnf") {
+		fmt.Println("Error: This setup is designed specifically for Fedora/DNF environments.")
+		os.Exit(1)
 	}
 
-	return nil
-}
-
-func install(pkgs ...Package) error {
-	if len(pkgs) == 0 {
-		return nil
+	// 3. Bootstrapping Core Package Dependencies
+	fmt.Println("[usetup] Bootstrapping core packages (aria2, acl, git, etc.)...")
+	corePkgs := config.CorePackages
+	if err := installer.Package(corePkgs...); err != nil {
+		fmt.Printf("Warning: failed to install some core packages: %v\n", err)
 	}
 
-	mgr := availablePackageManager
-
-	args := make([]string, 0, len(pkgs)+3)
-
-	switch mgr {
-	case DNF, APTD:
-		args = append(args, "install", "-y")
-	case PACMAN:
-		args = append(args, "-S", "--noconfirm")
-	default:
-		return fmt.Errorf("unsupported package manager: %s", mgr)
+	// 4. Start Aria2 RPC Daemon
+	fmt.Println("[usetup] Launching Aria2 RPC daemon...")
+	_ = exec.Command("pkill", "-f", "aria2c.*67486").Run() // clean up any previous instance
+	cmd := exec.Command("aria2c",
+		"--enable-rpc",
+		"--rpc-listen-port=67486",
+		"--rpc-secret=UsetupSecretKeyValue",
+		"--rpc-listen-all=false",
+		"--daemon=true",
+	)
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Warning starting aria2c: %v\n", err)
 	}
 
-	for _, p := range pkgs {
-		args = append(args, p.resolve(mgr))
+	// Give the daemon a moment to bind
+	time.Sleep(500 * time.Millisecond)
+
+	dl = downloader.NewDownloader(downloader.Config{
+		Host:   "localhost",
+		Port:   "67486",
+		Secret: "UsetupSecretKeyValue",
+	})
+}
+
+func main() {
+	// Ensure we shut down the aria2c daemon at exit
+	defer func() {
+		fmt.Println("[usetup] Cleaning up Aria2 RPC daemon...")
+		_ = exec.Command("pkill", "-f", "aria2c.*67486").Run()
+	}()
+
+	// 1. Setup Workspace Directories and Permissions
+	workspaceDirs := []string{
+		config.PublicSourceDir,
+		config.ToolsDir,
+		config.SrcBinDir,
+		config.ApplicationsDir,
+		config.AppBinDir,
+		config.AppXdgDir,
+		config.PoshThemeDir,
+	}
+	fmt.Println("[usetup] Preparing workspace directory structure...")
+	if err := sysutils.SetupWorkspaceDirs(config.PublicSourceDir, workspaceDirs, config.DefaultUserGroup); err != nil {
+		fmt.Printf("Error configuring workspace directories: %v\n", err)
+		os.Exit(1)
 	}
 
-	return run(mgr, args...)
-}
+	// 2. Interactive Selection Prompts
+	langOpts := []huh.Option[string]{
+		huh.NewOption("Node.js", "Node.js"),
+		huh.NewOption("Bun", "Bun"),
+		huh.NewOption("Python", "Python"),
+		huh.NewOption("Go", "Go"),
+		huh.NewOption("Rust", "Rust"),
+		huh.NewOption("Dart & Flutter", "Dart"),
+		huh.NewOption("Podman & Compose", "Podman"),
+		huh.NewOption("Caddy & FrankenPHP", "Caddy"),
+	}
 
-var neededPackages = []Package{
-	// core download & archive tools
-	{Name: "aria2", CheckCmd: "aria2c"},
-	{Name: "curl"},
-	{Name: "wget"},
-	{Name: "unzip"},
-	{Name: "xz"},
-	{Name: "tar"},
-	{Name: "pixz"},
-	{Name: "pigz"},
+	browserOpts := []huh.Option[string]{
+		huh.NewOption("Chrome", "Chrome"),
+		huh.NewOption("Brave", "Brave"),
+		huh.NewOption("Bitwarden", "Bitwarden"),
+		huh.NewOption("Proprietary Codecs (VLC/Ffmpeg)", "Codecs"),
+	}
 
-	// shell productivity tools
-	{Name: "fzf"},
-	{Name: "zoxide"},
-	{Name: "eza"},
-
-	// interactive / CLI UX tools
-	{
-		Name:   "oh-my-posh",
-		Pacman: "oh-my-posh-bin", // varies in pacman so we explicitly tell to use this
-		// check command is same as name so no need
-	},
-	{Name: "jq"},
-
-	// core shell tools
-	{Name: "zsh"},
-	{Name: "git"},
-}
-
-type DirectLink struct {
-	link string
-	name string
-}
-
-var knownLinks = []DirectLink{
-	// Languages
-	{"go.tar.gz", GOLANG_DOWNLOAD_LINK},
-	{"dart.tar.xz", DART_DOWNLOAD_LINK},
-
-	// IDEs (heavy tarballs)
-	{"antigravity.tar.gz", ANTIGRAVITY_DOWNLOAD_LINK},
-	{"zed.tar.gz", ZED_DOWNLOAD_LINK},
-	{"datagrip.tar.gz", JETBRAINS_DATA_GRIP_DOWNLOAD_LINK},
-
-	// Browsers / apps (RPMs)
-	{"chrome.rpm", CHROME_DOWNLOAD_LINK},
-	{"vscode.rpm", VS_CODE_DOWNLOAD_LINK},
-	{"bitwarden.rpm", BITWARDEN_DOWNLOAD_LINK},
-}
-
-func chooseOptions(header string, options []string) ([]string, error) {
-	var selected []string
-
-	opts := make([]huh.Option[string], len(options))
-	for i, o := range options {
-		opts[i] = huh.NewOption(o, o)
+	ideOpts := []huh.Option[string]{
+		huh.NewOption("Neovim", "Neovim"),
+		huh.NewOption("Antigravity IDE", "Antigravity"),
+		huh.NewOption("VS Code", "VS Code"),
+		huh.NewOption("JetBrains DataGrip", "DataGrip"),
+		huh.NewOption("Zed Editor", "Zed"),
 	}
 
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewMultiSelect[string]().
-				Title(header).
-				Options(opts...).
-				Value(&selected),
+				Title("Select Languages & Tools to Install").
+				Options(langOpts...).
+				Value(&selectedLangs),
+		),
+		huh.NewGroup(
+			huh.NewMultiSelect[string]().
+				Title("Select Browsers & Tools to Install").
+				Options(browserOpts...).
+				Value(&selectedBrowsers),
+		),
+		huh.NewGroup(
+			huh.NewMultiSelect[string]().
+				Title("Select IDEs & Editors to Install").
+				Options(ideOpts...).
+				Value(&selectedIDEs),
 		),
 	)
 
-	err := form.Run()
-	if err != nil {
-		return nil, err
+	if err := form.Run(); err != nil {
+		fmt.Printf("Selection canceled: %v\n", err)
+		return
 	}
 
-	return selected, nil
-}
+	// 3. Compile Download Requests for parallel downloads
+	downloadRequests := []downloader.DownloadRequest{}
+	tempDir := "/tmp/usetup"
+	_ = os.MkdirAll(tempDir, 0777)
 
-func init() {
-	if cmdExists(DNF) {
-		availablePackageManager = DNF
-	} else if cmdExists(APTD) {
-		availablePackageManager = APTD
-	} else if cmdExists(PACMAN) {
-		availablePackageManager = PACMAN
-	} else {
-		panic("No supported package manager found")
+	if slices.Contains(selectedLangs, "Go") {
+		cfg := config.Tools["go"]
+		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+	}
+	if slices.Contains(selectedLangs, "Dart") {
+		cfg := config.Tools["dart"]
+		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+	}
+	if slices.Contains(selectedBrowsers, "Chrome") {
+		cfg := config.Tools["chrome"]
+		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+	}
+	if slices.Contains(selectedBrowsers, "Bitwarden") {
+		cfg := config.Tools["bitwarden"]
+		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+	}
+	if slices.Contains(selectedIDEs, "Antigravity") {
+		cfg := config.Tools["antigravity"]
+		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+	}
+	if slices.Contains(selectedIDEs, "VS Code") {
+		cfg := config.Tools["vscode"]
+		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+	}
+	if slices.Contains(selectedIDEs, "DataGrip") {
+		cfg := config.Tools["datagrip"]
+		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
+	}
+	if slices.Contains(selectedIDEs, "Zed") {
+		cfg := config.Tools["zed"]
+		downloadRequests = append(downloadRequests, downloader.DownloadRequest{URL: cfg.DownloadURL, Out: cfg.FileName})
 	}
 
-	install(neededPackages...)
+	// 4. Execute Parallel Downloads
+	if len(downloadRequests) > 0 {
+		fmt.Printf("[usetup] Downloading %d selected package archives...\n", len(downloadRequests))
+		res, err := dl.DownloadBatch(
+			tempDir,
+			downloader.BatchOptions{
+				ConcurrentDownloads: 3,
+				ConnectionsPerFile:  16,
+			},
+			downloadRequests,
+		)
+		if err != nil {
+			fmt.Printf("Error queuing downloads: %v\n", err)
+			os.Exit(1)
+		}
+
+		if err := downloader.ShowBatchProgress(res); err != nil {
+			fmt.Printf("Download error details: %v\n", err)
+		}
+	}
+
+	// 5. Install Shell Configurations and Environment profiles
+	// Find script dir
+	exePath, _ := os.Executable()
+	scriptDir := filepath.Dir(exePath)
+	// If run under go run, it might be temp directory. Fallback to /home/hwakins/setup/shell-scripts
+	if !sysutils.CommandExists(filepath.Join(scriptDir, "path_login.sh")) {
+		scriptDir = "/home/hwakins/setup/shell-scripts"
+	}
+	if err := sysutils.InstallShellConfig(scriptDir, config.PublicSourceDir); err != nil {
+		fmt.Printf("Warning: failed to install login environment script: %v\n", err)
+	}
+
+	// 6. Setup ZSH shell features if requested
+	if slices.Contains(config.CorePackages, "zsh") {
+		fmt.Println("[usetup] Initializing Zsh setup...")
+		if err := sysutils.RunCommand("bash", filepath.Join(scriptDir, "zsh-init.sh")); err != nil {
+			fmt.Printf("Warning: ZSH bootstrap failed: %v\n", err)
+		}
+	}
+
+	// 7. Bootstrap Oh My Posh
+	ensureOhMyPosh()
+
+	// 8. Bootstrap Witr tool
+	if !sysutils.CommandExists("witr") {
+		fmt.Println("[usetup] Bootstrapping Witr...")
+		_ = sysutils.RunCommand("bash", "-c", "curl -fsSL https://raw.githubusercontent.com/pranshuparmar/witr/main/install.sh | bash")
+	}
+
+	// 9. Execute Language Installations
+	for _, l := range selectedLangs {
+		var err error
+		switch l {
+		case "Node.js":
+			err = lang.InstallNode()
+		case "Bun":
+			err = lang.InstallBun()
+		case "Python":
+			err = lang.InstallPython()
+		case "Go":
+			err = lang.InstallGo(config.Tools["go"])
+		case "Rust":
+			err = lang.InstallRust()
+		case "Dart":
+			err = lang.InstallDart(config.Tools["dart"])
+		case "Podman":
+			err = lang.InstallPodman()
+		case "Caddy":
+			err = lang.InstallCaddyFrankenPHP()
+		}
+		if err != nil {
+			fmt.Printf("Error installing %s: %v\n", l, err)
+		}
+	}
+
+	// 10. Execute Browser Installations
+	for _, b := range selectedBrowsers {
+		var err error
+		switch b {
+		case "Chrome":
+			err = browser.InstallChrome(config.Tools["chrome"])
+		case "Brave":
+			err = browser.InstallBrave()
+		case "Bitwarden":
+			err = browser.InstallBitwarden(config.Tools["bitwarden"])
+		case "Codecs":
+			err = browser.InstallCodecs()
+		}
+		if err != nil {
+			fmt.Printf("Error installing %s: %v\n", b, err)
+		}
+	}
+
+	// 11. Execute IDE Installations
+	for _, i := range selectedIDEs {
+		var err error
+		switch i {
+		case "Neovim":
+			err = ide.InstallNeovim()
+		case "Antigravity":
+			err = ide.InstallAntigravity(config.Tools["antigravity"])
+		case "VS Code":
+			err = ide.InstallVSCode(config.Tools["vscode"])
+		case "DataGrip":
+			err = ide.InstallDataGrip(config.Tools["datagrip"])
+		case "Zed":
+			err = ide.InstallZed(config.Tools["zed"])
+		}
+		if err != nil {
+			fmt.Printf("Error installing %s: %v\n", i, err)
+		}
+	}
+
+	// 12. Final Perms Sweeping
+	fmt.Println("[usetup] Performing final ownership and permissions sweep...")
+	if err := sysutils.SweepACL(config.PublicSourceDir, config.DefaultUserGroup); err != nil {
+		fmt.Printf("Warning: final permissions sweep failed: %v\n", err)
+	}
+
+	fmt.Println("[usetup] Setup complete. The shared workspace under /src is fully configured.")
 }
 
-func main() {
+func ensureOhMyPosh() {
+	poshBin := filepath.Join(config.PoshDir, "bin/oh-my-posh")
+	if sysutils.CommandExists("oh-my-posh") || sysutils.CommandExists(poshBin) {
+		fmt.Println("[usetup] Oh My Posh already available. Checking themes...")
+		ensurePoshThemes()
+		return
+	}
 
+	fmt.Println("[usetup] Bootstrapping Oh My Posh...")
+	poshBinDir := filepath.Join(config.PoshDir, "bin")
+	_ = os.MkdirAll(poshBinDir, 0755)
+
+	scriptPath := "/tmp/posh_install.sh"
+	if err := sysutils.RunCommand("curl", "-sSL", "https://ohmyposh.dev/install.sh", "-o", scriptPath); err != nil {
+		fmt.Printf("Warning: failed to download Oh My Posh installer: %v\n", err)
+		return
+	}
+	defer os.Remove(scriptPath)
+
+	if err := sysutils.RunCommand("bash", scriptPath, "-d", poshBinDir); err != nil {
+		fmt.Printf("Warning: failed to execute Oh My Posh installer: %v\n", err)
+		return
+	}
+
+	_ = sysutils.LinkFiles(poshBinDir, config.SrcBinDir)
+	ensurePoshThemes()
+}
+
+func ensurePoshThemes() {
+	bashThemeURL := "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/refs/heads/main/themes/clean-detailed.omp.json"
+	zshThemeURL := "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/refs/heads/main/themes/atomic.omp.json"
+
+	bashThemePath := filepath.Join(config.PoshThemeDir, "bash.omp.json")
+	zshThemePath := filepath.Join(config.PoshThemeDir, "zsh.omp.json")
+
+	if _, err := os.Stat(bashThemePath); os.IsNotExist(err) {
+		_ = sysutils.RunCommand("curl", "-sL", "-o", bashThemePath, bashThemeURL)
+	}
+	if _, err := os.Stat(zshThemePath); os.IsNotExist(err) {
+		_ = sysutils.RunCommand("curl", "-sL", "-o", zshThemePath, zshThemeURL)
+	}
 }

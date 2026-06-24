@@ -3,3 +3,5 @@
 *.zst
 *.tar.zst
 *.tar.xz
+
+*usetup*
