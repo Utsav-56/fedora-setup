@@ -32,6 +32,10 @@ var (
 	// --- 4. RUST & PYTHON (uv) ---
 	UvPythonInstallDir = filepath.Join(PublicSourceDir, "python", "versions")
 	UvToolDir          = filepath.Join(PublicSourceDir, "python", "tools")
+
+	Aria2RpcPort   = 62478
+	Aria2RpcSecret = "d3c2e95b-f507-4581-9850-ed3b3c6729a8"
+	Aria2RpcHost   = "localhost"
 )
 
 type ToolConfig struct {

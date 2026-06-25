@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -68,8 +69,8 @@ func init() {
 	_ = exec.Command("pkill", "-f", "aria2c.*67486").Run() // clean up any previous instance
 	cmd := exec.Command("aria2c",
 		"--enable-rpc",
-		"--rpc-listen-port=67486",
-		"--rpc-secret=UsetupSecretKeyValue",
+		fmt.Sprintf("--rpc-listen-port=%d", config.Aria2RpcPort),
+		fmt.Sprintf("--rpc-secret=%s", config.Aria2RpcSecret),
 		"--rpc-listen-all=false",
 		"--daemon=true",
 	)
@@ -81,9 +82,9 @@ func init() {
 	time.Sleep(500 * time.Millisecond)
 
 	dl = downloader.NewDownloader(downloader.Config{
-		Host:   "localhost",
-		Port:   "67486",
-		Secret: "UsetupSecretKeyValue",
+		Host:   config.Aria2RpcHost,
+		Port:   fmt.Sprintf("%d", config.Aria2RpcPort),
+		Secret: config.Aria2RpcSecret,
 	})
 }
 
@@ -143,7 +144,6 @@ func RenderEnvScript() (string, error) {
 	}
 	return buf.String(), nil
 }
-
 
 func main() {
 	// Set SDK and global cache environment variables for the current run to support installer tools
