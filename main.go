@@ -33,7 +33,7 @@ var envScriptTmpl string
 //go:embed oh-my-posh/themes/shell.omp.toml
 var poshThemeContent string
 
-//go:embed .version.info
+//go:embed .version-info
 var versionInfoContent string
 
 func getVersionInfo() string {

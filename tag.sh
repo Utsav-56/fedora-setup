@@ -8,7 +8,8 @@ CURRENT_DATE=$(date +"%d-%m-%Y %H:%M:%S")
 echo "v$tag" > .version-info
 echo "$CURRENT_DATE" >> .version-info
 
-read -p "Enter commit message for latest changes: \n" commit_msg
+echo "Enter commit message for latest changes: "
+read -p "" commit_msg
 
 # now commit the changes
 git add .
@@ -16,3 +17,4 @@ git commit -m "$commit_msg"
 git push origin main
 
 git tag "v$tag"
+git push origin "v$tag"
