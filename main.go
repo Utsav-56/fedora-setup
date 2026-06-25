@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"text/template"
 	"time"
 
@@ -32,6 +33,22 @@ var envScriptTmpl string
 //go:embed oh-my-posh/themes/shell.omp.toml
 var poshThemeContent string
 
+//go:embed .version.info
+var versionInfoContent string
+
+func getVersionInfo() string {
+	var sb strings.Builder
+
+	lines := strings.Split(versionInfoContent, "\n")
+	if len(lines) >= 2 {
+		version := strings.TrimSpace(lines[0])
+		date := strings.TrimSpace(lines[1])
+		sb.WriteString(fmt.Sprintf("Version: %s\nDate: %s\n", version, date))
+	}
+
+	return sb.String()
+}
+
 var (
 	selectedLangs    []string
 	selectedBrowsers []string
@@ -44,6 +61,8 @@ func init() {
 	logger.Info("==========================================")
 	logger.Info("            USETUP FEDORA GO              ")
 	logger.Info("==========================================")
+
+	logger.Info(getVersionInfo())
 
 	// 1. Root Check
 	if !sysutils.IsRoot() {
@@ -181,7 +200,7 @@ func main() {
 	// Ensure we shut down the aria2c daemon at exit
 	defer func() {
 		logger.Info("Cleaning up Aria2 RPC daemon...")
-		_ = exec.Command("pkill", "-f", "aria2c.*67486").Run()
+		_ = exec.Command("pkill", "-f", fmt.Sprintf("aria2c.*%d", config.Aria2RpcPort)).Run()
 	}()
 
 	// 1. Setup Workspace Directories and Permissions
